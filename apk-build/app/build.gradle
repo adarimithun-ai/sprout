@@ -21,9 +21,9 @@ plugins {
 }
 
 def twaManifest = [
-    applicationId: 'io.github.adarimithun_ai.twa',
+    applicationId: 'io.github.adarimithun_ai.sprout',
     hostName: 'adarimithun-ai.github.io', // The domain being opened in the TWA.
-    launchUrl: '/sprout-tracker/index.html', // The start path for the TWA. Must be relative to the domain.
+    launchUrl: '/sprout/index.html', // The start path for the TWA. Must be relative to the domain.
     name: 'Sprout: Baby Tracker', // The application name.
     launcherName: 'Sprout', // The name shown on the Android Launcher.
     themeColor: '#7C5CFA', // The color used for the status bar.
@@ -52,13 +52,13 @@ def twaManifest = [
 
 android {
     compileSdkVersion 36
-    namespace "io.github.adarimithun_ai.twa"
+    namespace "io.github.adarimithun_ai.sprout"
     defaultConfig {
-        applicationId "io.github.adarimithun_ai.twa"
+        applicationId "io.github.adarimithun_ai.sprout"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 3
-        versionName "3"
+        versionCode 1
+        versionName "1"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
@@ -76,12 +76,12 @@ android {
             // The URL the Web Manifest for the Progressive Web App that the TWA points to. This
             // is used by Chrome OS and Meta Quest to open the Web version of the PWA instead of
             // the TWA, as it will probably give a better user experience for non-mobile devices.
-            resValue "string", "webManifestUrl", 'https://adarimithun-ai.github.io/sprout-tracker/manifest.json'
+            resValue "string", "webManifestUrl", 'https://adarimithun-ai.github.io/sprout/manifest.json'
         
 
         
             // This is used by Meta Quest.
-            resValue "string", "fullScopeUrl", 'https://adarimithun-ai.github.io/sprout-tracker/'
+            resValue "string", "fullScopeUrl", 'https://adarimithun-ai.github.io/sprout/'
         
 
         

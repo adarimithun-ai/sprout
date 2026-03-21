@@ -1,5 +1,5 @@
 {
-  "packageId": "io.github.adarimithun_ai.twa",
+  "packageId": "io.github.adarimithun_ai.sprout",
   "host": "adarimithun-ai.github.io",
   "name": "Sprout: Baby Tracker",
   "launcherName": "Sprout",
@@ -12,18 +12,18 @@
   "navigationDividerColorDark": "#000000",
   "backgroundColor": "#0A0A0F",
   "enableNotifications": true,
-  "startUrl": "/sprout-tracker/index.html",
-  "iconUrl": "https://adarimithun-ai.github.io/sprout-tracker/icons/icon-512x512.png",
+  "startUrl": "/sprout/index.html",
+  "iconUrl": "https://adarimithun-ai.github.io/sprout/icons/icon-512x512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
-    "path": "/Users/mintu/Downloads/baby Growth tracker/apk-build/android.keystore",
+    "path": "android.keystore",
     "alias": "android"
   },
-  "appVersionName": "2",
-  "appVersionCode": 2,
+  "appVersionName": "1",
+  "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://adarimithun-ai.github.io/sprout-tracker/manifest.json",
+  "webManifestUrl": "https://adarimithun-ai.github.io/sprout/manifest.json",
   "fallbackType": "customtabs",
   "features": {},
   "alphaDependencies": {
@@ -32,7 +32,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://adarimithun-ai.github.io/sprout-tracker/",
+  "fullScopeUrl": "https://adarimithun-ai.github.io/sprout/",
   "minSdkVersion": 21,
   "orientation": "default",
   "fingerprints": [],
@@ -42,5 +42,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "2"
+  "appVersion": "1"
 }
