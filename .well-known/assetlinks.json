@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.adarimithun_ai.sprout",
+    "sha256_cert_fingerprints": [
+      "ef:39:5e:bc:4d:8b:60:e0:cc:5c:f1:c7:d9:9d:37:d0:9d:d0:5f:2d:2d:de:96:85:d1:70:ad:a2:3a:2e:3d:86"
+    ]
+  }
+}]
