@@ -1,77 +1,43 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // ── INDEXEDDB SETUP ──────────────────────────────────────────
-    const DB_NAME = 'SproutDB';
-    const DB_VERSION = 2;
-    let db;
+    // ── CLOUD API LAYER (Railway backend) ────────────────────────
+    const API_BASE = (window.SPROUT_API_URL || 'http://localhost:3001') + '/api';
 
-    function initDB() {
-        return new Promise((resolve, reject) => {
-            const req = indexedDB.open(DB_NAME, DB_VERSION);
-            req.onupgradeneeded = e => {
-                const db = e.target.result;
-                if (e.oldVersion < 2) {
-                    if (db.objectStoreNames.contains('growth'))   db.deleteObjectStore('growth');
-                    if (db.objectStoreNames.contains('timeline')) db.deleteObjectStore('timeline');
-                    if (db.objectStoreNames.contains('memories')) db.deleteObjectStore('memories');
-                    if (db.objectStoreNames.contains('state'))    db.deleteObjectStore('state');
-                }
-                if (!db.objectStoreNames.contains('growth'))   db.createObjectStore('growth', { keyPath: 'id', autoIncrement: true });
-                if (!db.objectStoreNames.contains('timeline')) db.createObjectStore('timeline', { keyPath: 'id', autoIncrement: true });
-                if (!db.objectStoreNames.contains('memories')) db.createObjectStore('memories', { keyPath: 'id', autoIncrement: true });
-                if (!db.objectStoreNames.contains('state'))    db.createObjectStore('state', { keyPath: 'key' });
-            };
-            req.onsuccess = e => resolve(e.target.result);
-            req.onerror = e => reject(e.target.error);
-        });
-    }
-
-    async function getStoreData(db, storeName) {
-        return new Promise((resolve) => {
-            const tx = db.transaction(storeName, 'readonly');
-            const req = tx.objectStore(storeName).getAll();
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => resolve([]);
-        });
-    }
-
-    async function putData(db, storeName, data) {
-        return new Promise((resolve) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).put(data);
-            tx.oncomplete = () => resolve();
-        });
-    }
-
-    async function addData(db, storeName, data) {
-        return new Promise((resolve) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            const req = tx.objectStore(storeName).add(data);
-            req.onsuccess = () => resolve(req.result);
-        });
-    }
-
-    async function deleteData(db, storeName, id) {
-        return new Promise((resolve) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).delete(id);
-            tx.oncomplete = () => resolve();
-        });
-    }
-
-    async function clearStore(db, storeName) {
-        return new Promise((resolve) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            tx.objectStore(storeName).clear();
-            tx.oncomplete = () => resolve();
-        });
-    }
-
-    try {
-        db = await initDB();
-    } catch (e) {
-        console.error("Failed to load IndexedDB", e);
-    }
+    const api = {
+        async get(path) {
+            const r = await fetch(API_BASE + path);
+            if (!r.ok) throw new Error(await r.text());
+            return r.json();
+        },
+        async post(path, body) {
+            const r = await fetch(API_BASE + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!r.ok) throw new Error(await r.text());
+            return r.json();
+        },
+        async postForm(path, formData) {
+            const r = await fetch(API_BASE + path, { method: 'POST', body: formData });
+            if (!r.ok) throw new Error(await r.text());
+            return r.json();
+        },
+        async put(path, body) {
+            const r = await fetch(API_BASE + path, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!r.ok) throw new Error(await r.text());
+            return r.json();
+        },
+        async del(path) {
+            const r = await fetch(API_BASE + path, { method: 'DELETE' });
+            if (!r.ok) throw new Error(await r.text());
+            return r.json();
+        }
+    };
 
     // ── WHO BENCHMARKS ─────────────────────────────────────────
     // Feature 1: hc arrays added (boys, cm, P25/P50/P75)
@@ -106,8 +72,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let heightUnit = 'ft';
 
     // ── INITIAL DATA LOAD ────────────────────────────────────
-    if (db) {
-        const growthDb = await getStoreData(db, 'growth');
+    try {
+        const [growthDb, stateDb, timelineDb, memoriesDb] = await Promise.all([
+            api.get('/growth'),
+            api.get('/state'),
+            api.get('/timeline'),
+            api.get('/memories')
+        ]);
+
         growthDb.forEach(g => {
             weightData.push(g.w);
             heightData.push(g.h);
@@ -115,16 +87,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             labels.push(g.label);
         });
 
-        const stateDb = await getStoreData(db, 'state');
         stateDb.forEach(s => {
+            const val = s.val === 'true' ? true : s.val === 'false' ? false : s.val;
             if (s.key === 'dob') {
                 dob = s.val;
             } else if (s.key === 'heightUnit') {
                 heightUnit = s.val;
             } else if (s.key.startsWith('v_')) {
-                vaccState[s.key] = s.val;
+                vaccState[s.key] = val;
             } else {
-                checkState[s.key] = s.val;
+                checkState[s.key] = val;
             }
         });
 
@@ -142,21 +114,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update height input label to match loaded unit
         updateHeightInputLabel();
 
-        // Feature 8: load timeline photos from DB (convert file blobs to object URLs)
-        const timelineDb = await getStoreData(db, 'timeline');
+        // Load timeline (img_url comes from Supabase Storage)
         timelineDb.forEach(item => {
-            let imgUrl = null;
-            if (item.file) imgUrl = URL.createObjectURL(item.file);
-            prependTimeline({ ...item, imgUrl });
+            prependTimeline({ ...item, desc: item.description || '', imgUrl: item.img_url || null });
         });
 
-        // Feature 8: load memory photos from DB
-        const memoriesDb = await getStoreData(db, 'memories');
+        // Load memories (file_url comes from Supabase Storage)
         memoriesDb.forEach(item => {
-            let fileUrl = '';
-            if (item.file) fileUrl = URL.createObjectURL(item.file);
-            addMemoryCard({ ...item, fileUrl });
+            addMemoryCard({ ...item, fileUrl: item.file_url || '' });
         });
+    } catch (e) {
+        console.error('Failed to load data from API', e);
+        showToast('Could not connect to server. Check config.js.');
     }
 
     // ── CHART ──────────────────────────────────────────────────
@@ -307,8 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const list = document.getElementById('growthHistoryList');
         if (!list) return;
         list.innerHTML = '';
-        if (!db) return;
-        const growthDb = await getStoreData(db, 'growth');
+        const growthDb = await api.get('/growth').catch(() => []);
         growthDb.forEach(item => {
             const div = document.createElement('div');
             div.className = 'growth-history-item';
@@ -341,7 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
             div.querySelector('.delete').addEventListener('click', async () => {
                 if (confirm(`Delete ${item.label} growth record?`)) {
-                    await deleteData(db, 'growth', item.id);
+                    await api.del('/growth/' + item.id);
                     await rebuildGrowthArrays();
                     initChart();
                 }
@@ -356,8 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         heightData = [1.64];
         hcData     = [34.5];
         labels     = ['Mo 1'];
-        if (!db) return;
-        const newData = await getStoreData(db, 'growth');
+        const newData = await api.get('/growth').catch(() => []);
         newData.forEach(g => {
             weightData.push(g.w);
             heightData.push(g.h);
@@ -389,7 +356,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.target.classList.add('active');
             heightUnit = e.target.dataset.unit;
             updateHeightInputLabel();
-            if (db) await putData(db, 'state', { key: 'heightUnit', val: heightUnit });
+            await api.put('/state/heightUnit', { val: heightUnit }).catch(() => {});
             refreshChart();
             updateStatCards();
             renderGrowthHistory();
@@ -419,12 +386,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dobInput) {
         dobInput.addEventListener('change', async e => {
             dob = e.target.value || null;
-            if (db) {
-                if (dob) {
-                    await putData(db, 'state', { key: 'dob', val: dob });
-                } else {
-                    await deleteData(db, 'state', 'dob');
-                }
+            if (dob) {
+                await api.put('/state/dob', { val: dob }).catch(() => {});
+            } else {
+                await api.del('/state/dob').catch(() => {});
             }
             // Auto-select suggestions age from DOB
             if (dob) {
@@ -497,7 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 checkState[key] = e.target.checked;
                 li.classList.toggle('done', e.target.checked);
                 updatePercentages(age);
-                if (db) await putData(db, 'state', { key: key, val: e.target.checked });
+                await api.put('/state/' + key, { val: e.target.checked }).catch(() => {});
                 // Feature 7: fire confetti when a milestone is checked
                 if (e.target.checked && cat === 'milestone') {
                     burstConfetti(e.target);
@@ -666,7 +631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const id = e.target.dataset.id;
                 vaccState[id] = e.target.checked;
                 renderVaccines();
-                if (db) await putData(db, 'state', { key: id, val: e.target.checked });
+                await api.put('/state/' + id, { val: e.target.checked }).catch(() => {});
             });
         });
 
@@ -729,11 +694,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         initChart();
 
-        if (db) {
-            const record = { w: wt, h: ht, hc: hcVal, label: newLabel, date: dateVal, notes: notesVal };
-            await addData(db, 'growth', record);
-            renderGrowthHistory();
-        }
+        await api.post('/growth', { w: wt, h: ht, hc: hcVal, label: newLabel, date: dateVal, notes: notesVal }).catch(() => {});
+        renderGrowthHistory();
         e.target.reset();
         showToast('Growth data saved!');
         modal.classList.remove('active');
@@ -819,24 +781,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('milestoneForm').addEventListener('submit', async e => {
         e.preventDefault();
-        const file   = msPhotoInput ? msPhotoInput.files[0] : null;
-        let imgUrl   = null;
-        if (file) imgUrl = URL.createObjectURL(file);
+        const file = msPhotoInput ? msPhotoInput.files[0] : null;
 
-        let record = {
-            icon: 'fa-solid fa-star',
-            title: document.getElementById('milestoneTitle').value,
-            desc: document.getElementById('milestoneDesc').value,
-            date: formatDate(document.getElementById('milestoneDate').value),
-            file: file
-        };
+        const formData = new FormData();
+        formData.append('icon',     'fa-solid fa-star');
+        formData.append('title',    document.getElementById('milestoneTitle').value);
+        formData.append('desc',     document.getElementById('milestoneDesc').value);
+        formData.append('date_str', formatDate(document.getElementById('milestoneDate').value));
+        if (file) formData.append('file', file);
 
-        if (db) {
-            const newId = await addData(db, 'timeline', record);
-            record.id = newId;
-        }
+        let record = { icon: 'fa-solid fa-star', title: formData.get('title'), desc: formData.get('desc'), date: formData.get('date_str'), imgUrl: null };
+        try {
+            const saved = await api.postForm('/timeline', formData);
+            record = { ...saved, imgUrl: saved.img_url || null };
+        } catch (err) { console.error('Milestone save failed', err); }
 
-        prependTimeline({ ...record, imgUrl });
+        prependTimeline(record);
         e.target.reset();
         if (msPreview && msPlaceholder) { msPreview.src = ''; msPreview.style.display = 'none'; msPlaceholder.style.display = 'flex'; }
         showToast('Milestone added!');
@@ -854,10 +814,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const date  = formatDate(document.getElementById('healthDate').value);
 
         let record = { icon, title, desc, date };
-        if (db) {
-            const newId = await addData(db, 'timeline', record);
-            record.id = newId;
-        }
+        try {
+            const saved = await api.post('/timeline', { icon, title, desc: desc, date_str: date });
+            record = { ...saved, desc: saved.description || desc, imgUrl: null };
+        } catch (err) { console.error('Health save failed', err); }
 
         prependTimeline(record);
         e.target.reset();
@@ -885,16 +845,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const date    = formatDate(document.getElementById('memoryDate').value);
         const file    = memPhotoInput.files[0];
 
-        let record = { caption, date, file };
-        if (db) {
-            const newId = await addData(db, 'memories', record);
-            record.id = newId;
-        }
+        const memFormData = new FormData();
+        memFormData.append('caption',  caption);
+        memFormData.append('date_str', date);
+        if (file) memFormData.append('file', file);
 
-        let fileUrl = '';
-        if (file) fileUrl = URL.createObjectURL(file);
+        let record = { caption, date, fileUrl: '' };
+        try {
+            const saved = await api.postForm('/memories', memFormData);
+            record = { ...saved, fileUrl: saved.file_url || '' };
+        } catch (err) { console.error('Memory save failed', err); }
 
-        addMemoryCard({ ...record, fileUrl });
+        addMemoryCard(record);
         e.target.reset();
         memPreview.src = ''; memPreview.style.display = 'none'; memPlaceholder.style.display = 'flex';
         showToast('Memory saved!');
@@ -903,39 +865,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── FEATURE 3: EXPORT JSON ──────────────────────────────
     async function exportData() {
-        if (!db) { showToast('No database available.'); return; }
-
-        const growthRaw   = await getStoreData(db, 'growth');
-        const timelineRaw = await getStoreData(db, 'timeline');
-        const memoriesRaw = await getStoreData(db, 'memories');
-        const stateRaw    = await getStoreData(db, 'state');
-
-        // Strip non-serializable File objects
-        const stripFile = arr => arr.map(item => {
-            const copy = { ...item };
-            delete copy.file;
-            return copy;
-        });
-
-        const exportObj = {
-            exportedAt: new Date().toISOString(),
-            growth:     stripFile(growthRaw),
-            timeline:   stripFile(timelineRaw),
-            memories:   stripFile(memoriesRaw),
-            state:      stateRaw
-        };
-
-        const json = JSON.stringify(exportObj, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `sprout-export-${new Date().toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showToast('Data exported!');
+        try {
+            const [growth, timeline, memories, state] = await Promise.all([
+                api.get('/growth'),
+                api.get('/timeline'),
+                api.get('/memories'),
+                api.get('/state')
+            ]);
+            const exportObj = { exportedAt: new Date().toISOString(), growth, timeline, memories, state };
+            const json = JSON.stringify(exportObj, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `sprout-export-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Data exported!');
+        } catch (err) {
+            showToast('Export failed: ' + err.message);
+        }
     }
 
     const exportBtn = document.getElementById('exportBtn');
@@ -943,7 +894,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── FEATURE 9: IMPORT JSON ──────────────────────────────
     async function importData(jsonStr) {
-        if (!db) { showToast('No database available.'); return; }
         let parsed;
         try {
             parsed = JSON.parse(jsonStr);
@@ -951,30 +901,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast('Invalid JSON file.');
             return;
         }
-
         try {
-            await clearStore(db, 'growth');
-            await clearStore(db, 'timeline');
-            await clearStore(db, 'memories');
-            await clearStore(db, 'state');
-
-            const stores = ['growth', 'timeline', 'memories', 'state'];
-            for (const storeName of stores) {
-                const records = parsed[storeName] || [];
-                for (const record of records) {
-                    const copy = { ...record };
-                    delete copy.file;
-                    // Let autoIncrement assign new ids for non-state stores
-                    if (storeName !== 'state') delete copy.id;
-                    await new Promise((resolve) => {
-                        const tx  = db.transaction(storeName, 'readwrite');
-                        tx.objectStore(storeName).add(copy);
-                        tx.oncomplete = resolve;
-                        tx.onerror    = resolve;
-                    });
-                }
-            }
-
+            await api.post('/import', {
+                growth:   parsed.growth   || [],
+                timeline: parsed.timeline || [],
+                memories: parsed.memories || [],
+                state:    parsed.state    || []
+            });
             showToast('Import successful! Reloading...');
             setTimeout(() => location.reload(), 1200);
         } catch (err) {
@@ -1017,7 +950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         div.querySelector('.delete').addEventListener('click', async () => {
             if (confirm('Delete this timeline entry?')) {
-                if (db && item.id) await deleteData(db, 'timeline', item.id);
+                if (item.id) await api.del('/timeline/' + item.id).catch(() => {});
                 div.remove();
                 showToast('Entry deleted!');
             }
@@ -1049,7 +982,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         div.querySelector('.delete').addEventListener('click', async () => {
             if (confirm('Delete this memory?')) {
-                if (db && item.id) await deleteData(db, 'memories', item.id);
+                if (item.id) await api.del('/memories/' + item.id).catch(() => {});
                 div.remove();
                 if (grid.children.length === 0) {
                     grid.innerHTML = `<div class="memory-item empty-state"><i class="fa-solid fa-camera"></i><p>No memories yet — capture Rudhir's first moments!</p></div>`;
