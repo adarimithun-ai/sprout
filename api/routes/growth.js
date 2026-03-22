@@ -23,6 +23,19 @@ router.post('/', async (req, res) => {
     res.json(data);
 });
 
+// PUT update growth record
+router.put('/:id', async (req, res) => {
+    const { w, h, hc, date, notes } = req.body;
+    const { data, error } = await supabase
+        .from('growth')
+        .update({ w, h, hc: hc ?? null, date: date || '', notes: notes || '' })
+        .eq('id', req.params.id)
+        .select()
+        .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data);
+});
+
 // DELETE growth record
 router.delete('/:id', async (req, res) => {
     const { error } = await supabase

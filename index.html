@@ -83,6 +83,7 @@
                         <option value="11">11 Months</option><option value="12">12 Months</option>
                     </select>
                 </div>
+                <button class="btn btn-icon" id="themeToggleBtn" title="Toggle light/dark mode"><i class="fa-solid fa-sun"></i></button>
                 <button class="btn btn-icon" id="notifBtn"><i class="fa-solid fa-bell"></i></button>
                 <button id="openModalBtn" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Entry</button>
             </div>
@@ -417,6 +418,51 @@
                 </div>
                 <button type="submit" class="btn btn-primary full-width">Save Memory</button>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── ONBOARDING MODAL ───────────────────────────────────── -->
+<div class="modal-overlay" id="onboardingModal">
+    <div class="modal-container glass-card" style="max-width:420px;text-align:center;">
+        <!-- Step 1: Welcome -->
+        <div class="onboard-step" id="onboardStep1">
+            <div style="font-size:3rem;margin-bottom:1rem;">🌱</div>
+            <h2 style="margin-bottom:.5rem;">Welcome to Sprout!</h2>
+            <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.75rem;">Let's set things up for your family. It only takes a moment.</p>
+            <button class="btn btn-primary full-width" id="onboardNext1">Get Started <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+        <!-- Step 2: Baby details -->
+        <div class="onboard-step" id="onboardStep2" style="display:none;">
+            <div style="font-size:3rem;margin-bottom:1rem;">👶</div>
+            <h2 style="margin-bottom:.5rem;">Tell us about your baby</h2>
+            <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem;">We'll personalise everything for you.</p>
+            <div class="form-group" style="text-align:left;">
+                <label>Baby's name</label>
+                <input type="text" id="obBabyName" placeholder="e.g. Aria" class="form-control" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text-main);padding:.6rem .9rem;width:100%;font-family:'Outfit',sans-serif;">
+            </div>
+            <div class="form-group" style="text-align:left;margin-top:.75rem;">
+                <label>Date of birth <span style="color:var(--text-muted);font-size:.8em;">optional</span></label>
+                <input type="date" id="obDob" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text-main);padding:.6rem .9rem;width:100%;font-family:'Outfit',sans-serif;">
+            </div>
+            <button class="btn btn-primary full-width" id="onboardNext2" style="margin-top:1.25rem;">Next <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+        <!-- Step 3: Parent name -->
+        <div class="onboard-step" id="onboardStep3" style="display:none;">
+            <div style="font-size:3rem;margin-bottom:1rem;">💜</div>
+            <h2 style="margin-bottom:.5rem;">And your name?</h2>
+            <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem;">So Sprout knows who the super parent is!</p>
+            <div class="form-group" style="text-align:left;">
+                <label>Your name</label>
+                <input type="text" id="obParentName" placeholder="e.g. Priya" class="form-control" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text-main);padding:.6rem .9rem;width:100%;font-family:'Outfit',sans-serif;">
+            </div>
+            <button class="btn btn-primary full-width" id="onboardDone" style="margin-top:1.25rem;">Let's go! <i class="fa-solid fa-check"></i></button>
+        </div>
+        <!-- Step indicator -->
+        <div style="display:flex;justify-content:center;gap:.5rem;margin-top:1.5rem;">
+            <div class="ob-dot" id="obDot1" style="width:8px;height:8px;border-radius:50%;background:var(--primary);transition:.3s;"></div>
+            <div class="ob-dot" id="obDot2" style="width:8px;height:8px;border-radius:50%;background:var(--text-dim);transition:.3s;"></div>
+            <div class="ob-dot" id="obDot3" style="width:8px;height:8px;border-radius:50%;background:var(--text-dim);transition:.3s;"></div>
         </div>
     </div>
 </div>

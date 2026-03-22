@@ -120,6 +120,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (typeof refreshChart === 'function') refreshChart();
     }
 
+    // ── ONBOARDING ────────────────────────────────────────────
+    function showOnboardStep(n) {
+        [1, 2, 3].forEach(i => {
+            document.getElementById(`onboardStep${i}`).style.display = i === n ? '' : 'none';
+            const dot = document.getElementById(`obDot${i}`);
+            if (dot) dot.style.background = i === n ? 'var(--primary)' : 'var(--text-dim)';
+        });
+    }
+
+    function maybeShowOnboarding() {
+        if (babyName === 'Baby' && parentName === 'Parent') {
+            document.getElementById('onboardingModal').classList.add('active');
+            showOnboardStep(1);
+        }
+    }
+
+    document.getElementById('onboardNext1').addEventListener('click', () => showOnboardStep(2));
+
+    document.getElementById('onboardNext2').addEventListener('click', () => {
+        const name = document.getElementById('obBabyName').value.trim();
+        if (name) {
+            babyName = name;
+            document.getElementById('babyNameInput').value = name;
+        }
+        const dobVal = document.getElementById('obDob').value;
+        if (dobVal) {
+            dob = dobVal;
+            document.getElementById('dobInput').value = dobVal;
+            api.put('/state/dob', { val: dobVal }).catch(() => {});
+        }
+        showOnboardStep(3);
+    });
+
+    document.getElementById('onboardDone').addEventListener('click', async () => {
+        const pName = document.getElementById('obParentName').value.trim();
+        if (pName) {
+            parentName = pName;
+            document.getElementById('parentNameInput').value = pName;
+        }
+        if (babyName !== 'Baby')   await api.put('/state/babyName',   { val: babyName }).catch(() => {});
+        if (parentName !== 'Parent') await api.put('/state/parentName', { val: parentName }).catch(() => {});
+        applyNames();
+        if (dob) {
+            const ageMonths = calcAgeMonths(dob);
+            const sel = document.getElementById('babyAgeSelect');
+            if (sel) { sel.value = ageMonths; renderSuggestions(ageMonths); }
+            renderVaccines();
+        }
+        document.getElementById('onboardingModal').classList.remove('active');
+        showToast(`Welcome, ${parentName}! Sprout is ready for ${babyName} 🌱`);
+    });
+
     // ── INITIAL DATA LOAD ────────────────────────────────────
     try {
         const [growthDb, stateDb, timelineDb, memoriesDb] = await Promise.all([
@@ -178,10 +230,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         memoriesDb.forEach(item => {
             addMemoryCard({ ...item, fileUrl: item.file_url || '' });
         });
+
+        maybeShowOnboarding();
     } catch (e) {
         console.error('Failed to load data from API', e);
         showToast('Could not connect to server. Check config.js.');
     }
+
+    // ── EDIT STATE ───────────────────────────────────────────────
+    let editingGrowthId = null;
 
     // ── CHART ──────────────────────────────────────────────────
     const ctx = document.getElementById('growthChart').getContext('2d');
@@ -359,9 +416,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${notesHtml}
                 </div>
                 <div class="action-buttons" style="position:relative; opacity:1; top:0; right:0;">
+                    <button class="btn-action edit" title="Edit"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn-action delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
                 </div>
             `;
+            div.querySelector('.edit').addEventListener('click', () => {
+                editingGrowthId = item.id;
+                document.getElementById('weight').value = item.w;
+                const htDisplay = heightUnit === 'cm' ? (item.h * 30.48).toFixed(2) : item.h;
+                document.getElementById('height').value = htDisplay;
+                document.getElementById('headCirc').value = item.hc != null ? item.hc : '';
+                document.getElementById('growthDate').value = item.date || '';
+                document.getElementById('growthNotes').value = item.notes || '';
+                const submitBtn = document.querySelector('#growthForm button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = 'Update Growth Data';
+                modal.classList.add('active');
+                switchTab('growth');
+            });
             div.querySelector('.delete').addEventListener('click', async () => {
                 if (confirm(`Delete ${item.label} growth record?`)) {
                     await api.del('/growth/' + item.id);
@@ -429,6 +500,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Math.max(1, Math.min(12, months));
     }
 
+    function formatAgeDetailed() {
+        if (!dob) return null;
+        const birth = new Date(dob + 'T00:00:00');
+        const now   = new Date();
+        let months  = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+        // Walk back if we haven't reached the birth day-of-month yet this month
+        const testDate = new Date(birth);
+        testDate.setMonth(testDate.getMonth() + months);
+        if (testDate > now) months--;
+        // Remaining days after whole months
+        const afterMonths = new Date(birth);
+        afterMonths.setMonth(afterMonths.getMonth() + months);
+        const days = Math.floor((now - afterMonths) / (1000 * 60 * 60 * 24));
+        months = Math.max(0, months);
+        if (months === 0 && days === 0) return 'Newborn';
+        if (months === 0) return `${days} day${days !== 1 ? 's' : ''}`;
+        if (days === 0)   return `${months} month${months !== 1 ? 's' : ''}`;
+        return `${months} month${months !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''}`;
+    }
+
     function calcCurrentBabyWeeks() {
         if (!dob) return 4;
         const birth     = new Date(dob + 'T00:00:00');
@@ -473,6 +564,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     sel.value = ageMonths;
                     renderSuggestions(ageMonths);
                 }
+            }
+            // Refresh age stat card with new DOB
+            const ageValEl = document.getElementById('statAgeValue');
+            if (ageValEl) {
+                const detailed = formatAgeDetailed();
+                if (detailed) ageValEl.textContent = detailed;
             }
             // Feature 6: re-render vaccines with updated DOB
             renderVaccines();
@@ -580,7 +677,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!bm) return;
         document.getElementById('suggestionMonth').textContent = m;
         const ageValEl = document.getElementById('statAgeValue');
-        if (ageValEl) ageValEl.textContent = m === 1 ? '1 Month' : m + ' Months';
+        if (ageValEl) {
+            const detailed = formatAgeDetailed();
+            ageValEl.textContent = detailed || (m === 1 ? '1 Month' : m + ' Months');
+        }
 
         // Feature 10: show height in selected unit in benchmark section
         const hP25  = heightUnit === 'cm' ? (bm.h[0] * 30.48).toFixed(1) : bm.h[0];
@@ -727,9 +827,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const openBtn  = document.getElementById('openModalBtn');
     const closeBtn = document.getElementById('closeModalBtn');
 
+    function closeModal() {
+        modal.classList.remove('active');
+        if (editingGrowthId) {
+            editingGrowthId = null;
+            const submitBtn = document.querySelector('#growthForm button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = 'Save Growth Data';
+        }
+    }
+
     openBtn.addEventListener('click',  () => { modal.classList.add('active'); switchTab('growth'); });
-    closeBtn.addEventListener('click', () => modal.classList.remove('active'));
-    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('active'); });
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -759,6 +868,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Feature 5: notes
         const notesInput = document.getElementById('growthNotes');
         const notesVal   = notesInput ? notesInput.value.trim() : '';
+
+        if (editingGrowthId) {
+            await api.put('/growth/' + editingGrowthId, { w: wt, h: ht, hc: hcVal, date: dateVal, notes: notesVal }).catch(() => {});
+            editingGrowthId = null;
+            const submitBtn = document.querySelector('#growthForm button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = 'Save Growth Data';
+            await rebuildGrowthArrays();
+            initChart();
+            renderGrowthHistory();
+            e.target.reset();
+            showToast('Growth record updated!');
+            modal.classList.remove('active');
+            return;
+        }
 
         const newLabel = `Mo ${labels.length + 1}`;
         labels.push(newLabel);
@@ -1017,11 +1140,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         div.innerHTML = `
             <div class="timeline-icon"><i class="${item.icon}"></i></div>
-            <div class="timeline-content"><h4>${item.title}</h4><p>${item.desc}</p>${imgHtml}<span class="date">${item.date}</span></div>
+            <div class="timeline-content">
+                <h4 class="tl-title">${item.title}</h4>
+                <p class="tl-desc">${item.desc}</p>
+                ${imgHtml}
+                <span class="date">${item.date}</span>
+                <div class="tl-edit-form" style="display:none;margin-top:.5rem;">
+                    <input class="tl-edit-title" type="text" value="${item.title.replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:.35rem;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-main);padding:.35rem .65rem;font-family:'Outfit',sans-serif;font-size:.85rem;">
+                    <textarea class="tl-edit-desc" rows="2" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:var(--text-main);padding:.35rem .65rem;font-family:'Outfit',sans-serif;font-size:.85rem;resize:vertical;">${item.desc}</textarea>
+                    <div style="display:flex;gap:.5rem;margin-top:.4rem;">
+                        <button class="btn btn-primary tl-save-btn" style="padding:.3rem .9rem;font-size:.8rem;">Save</button>
+                        <button class="btn btn-icon tl-cancel-btn" style="padding:.3rem .9rem;font-size:.8rem;">Cancel</button>
+                    </div>
+                </div>
+            </div>
             <div class="action-buttons">
+                <button class="btn-action edit" title="Edit"><i class="fa-solid fa-pen"></i></button>
                 <button class="btn-action delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>`;
 
+        const editForm = div.querySelector('.tl-edit-form');
+        div.querySelector('.edit').addEventListener('click', () => {
+            const isOpen = editForm.style.display !== 'none';
+            editForm.style.display = isOpen ? 'none' : 'block';
+        });
+        div.querySelector('.tl-cancel-btn').addEventListener('click', () => {
+            editForm.style.display = 'none';
+        });
+        div.querySelector('.tl-save-btn').addEventListener('click', async () => {
+            const newTitle = div.querySelector('.tl-edit-title').value.trim();
+            const newDesc  = div.querySelector('.tl-edit-desc').value.trim();
+            if (!newTitle) return;
+            if (item.id) {
+                await api.put('/timeline/' + item.id, { title: newTitle, desc: newDesc, date_str: item.date }).catch(() => {});
+            }
+            div.querySelector('.tl-title').textContent = newTitle;
+            div.querySelector('.tl-desc').textContent  = newDesc;
+            item.title = newTitle; item.desc = newDesc;
+            editForm.style.display = 'none';
+            showToast('Entry updated!');
+        });
         div.querySelector('.delete').addEventListener('click', async () => {
             if (confirm('Delete this timeline entry?')) {
                 if (item.id) await api.del('/timeline/' + item.id).catch(() => {});
@@ -1050,10 +1208,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         div.innerHTML += `
             <div class="action-buttons">
+                <button class="btn-action edit" title="Edit caption"><i class="fa-solid fa-pen"></i></button>
                 <button class="btn-action delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
+            <div class="mem-edit-form" style="display:none;position:absolute;bottom:0;left:0;right:0;background:rgba(10,10,15,0.95);padding:.6rem;border-radius:0 0 12px 12px;z-index:10;">
+                <input class="mem-edit-caption" type="text" value="${(item.caption||'').replace(/"/g,'&quot;')}" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#f0f0ff;padding:.35rem .65rem;font-family:'Outfit',sans-serif;font-size:.82rem;margin-bottom:.35rem;">
+                <div style="display:flex;gap:.4rem;">
+                    <button class="btn btn-primary mem-save-btn" style="padding:.25rem .75rem;font-size:.78rem;">Save</button>
+                    <button class="btn btn-icon mem-cancel-btn" style="padding:.25rem .75rem;font-size:.78rem;">Cancel</button>
+                </div>
+            </div>
         `;
+        div.style.position = 'relative';
 
+        const memEditForm = div.querySelector('.mem-edit-form');
+        div.querySelector('.edit').addEventListener('click', () => {
+            memEditForm.style.display = memEditForm.style.display === 'none' ? 'block' : 'none';
+        });
+        div.querySelector('.mem-cancel-btn').addEventListener('click', () => {
+            memEditForm.style.display = 'none';
+        });
+        div.querySelector('.mem-save-btn').addEventListener('click', async () => {
+            const newCaption = div.querySelector('.mem-edit-caption').value.trim();
+            if (!newCaption) return;
+            if (item.id) {
+                await api.put('/memories/' + item.id, { caption: newCaption, date_str: item.date }).catch(() => {});
+            }
+            const overlay = div.querySelector('.memory-caption-overlay p');
+            if (overlay) overlay.textContent = newCaption;
+            item.caption = newCaption;
+            memEditForm.style.display = 'none';
+            showToast('Memory updated!');
+        });
         div.querySelector('.delete').addEventListener('click', async () => {
             if (confirm('Delete this memory?')) {
                 if (item.id) await api.del('/memories/' + item.id).catch(() => {});
@@ -1093,6 +1279,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    // ── LIGHT / DARK MODE TOGGLE ────────────────────────────────
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const savedTheme = localStorage.getItem('sprout-theme') || 'dark';
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        if (themeToggleBtn) themeToggleBtn.querySelector('i').className = 'fa-solid fa-moon';
+    }
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const isLight = document.body.classList.toggle('light-mode');
+            localStorage.setItem('sprout-theme', isLight ? 'light' : 'dark');
+            themeToggleBtn.querySelector('i').className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+        });
+    }
 
     // ── Mobile hamburger menu ─────────────────────────────────
     const sidebar      = document.getElementById('sidebar');

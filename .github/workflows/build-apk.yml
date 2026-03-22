@@ -40,9 +40,9 @@ jobs:
         working-directory: apk-build
         env:
           KEYSTORE_FILE: ${{ github.workspace }}/apk-build/android.keystore
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: sprout2024
+          KEY_ALIAS: android
+          KEY_PASSWORD: sprout2024
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       - name: Locate built APK
@@ -50,33 +50,46 @@ jobs:
         run: |
           APK=$(find apk-build/app/build/outputs/apk/release -name "*.apk" | head -1)
           echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          cp "$APK" sprout-v3.apk
+          cp "$APK" sprout-v4.apk
           echo "APK ready: $APK"
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sprout-v3-apk
-          path: sprout-v3.apk
-          retention-days: 60
+          name: sprout-v4-apk
+          path: sprout-v4.apk
+          retention-days: 90
 
       - name: Create GitHub Release with APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.${{ github.run_number }}
-          name: "Sprout v3 — 10 new features"
+          tag_name: v4.${{ github.run_number }}
+          name: "Sprout v4 — Polish update"
           body: |
-            ## What's new in v3
-            - Head circumference tracking with WHO benchmarks
-            - Date of birth — auto-calculates current age and vaccine due dates
-            - Export / Import all data as JSON backup
-            - Growth entry date and notes per record
-            - Vaccine due date alerts with real calendar dates
-            - Milestone confetti celebration animation
-            - Height unit toggle (cm / ft)
-            - 5th stat card for head circumference
+            ## What's new in v4
 
-            **How to install:** Download `sprout-v3.apk` below, transfer to your Android phone, enable "Install from unknown sources" in settings, and tap the file.
-          files: sprout-v3.apk
+            ### Quick wins & polish
+            - ✏️ **Edit entries** — growth records, milestone/health notes, memory captions
+            - 🎂 **Exact age** — stat card now shows "4 months, 12 days" when DOB is set
+            - ☀️ **Light / dark mode** toggle in the header (preference saved)
+            - 🌱 **Onboarding wizard** — 3-step setup on first launch (name, DOB, parent name)
+
+            ### Previous highlights
+            - Growth percentile chart vs WHO benchmarks
+            - Head circumference tracking
+            - IAP vaccination schedule with due-date alerts
+            - Export / Import JSON backup
+            - Milestone confetti animation
+            - Month-by-month suggestions (food, milestones, memory ideas)
+
+            🌐 **Web app:** https://sprout-baby-tracker.vercel.app
+
+            ---
+            **How to install the APK:**
+            1. Download `sprout-v4.apk` below
+            2. Transfer to your Android phone
+            3. Enable **Install from unknown sources** in Settings → Security
+            4. Tap the file to install
+          files: sprout-v4.apk
           draft: false
           prerelease: false
