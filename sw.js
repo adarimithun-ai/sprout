@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sprout-tracker-v1';
+const CACHE_NAME = 'sprout-tracker-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -22,17 +22,26 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = event.request.url;
+
+  // Never intercept API calls — let them go straight to the network.
+  // Intercepting Railway/API requests causes them to fail silently when
+  // the service worker returns undefined from a failed catch().
+  if (
+    url.includes('railway.app') ||
+    url.includes('/api/') ||
+    url.includes('supabase.co')
+  ) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).catch(() => {
-            // Optional: return a fallback page here if completely offline and not in cache
-        });
-      })
+    caches.match(event.request).then(response => {
+      if (response) {
+        return response;
+      }
+      return fetch(event.request);
+    })
   );
 });
 
