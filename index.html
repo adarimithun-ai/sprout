@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Rudhir Vaayu Shaurya's growth tracker — by Sahana">
-    <title>Sprout · Rudhir Vaayu Shaurya</title>
+    <meta name="description" content="Sprout — Baby Growth Tracker">
+    <title id="pageTitle">Sprout · Baby Tracker</title>
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#7c5cfa">
@@ -34,10 +34,10 @@
 
         <div class="baby-hero">
             <div class="baby-avatar-ring">
-                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=RudhirVaayu&backgroundColor=7c5cfa,ff7597&radius=50" alt="Rudhir">
+                <img id="babyAvatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=sprout&backgroundColor=7c5cfa,ff7597&radius=50" alt="Baby">
             </div>
-            <h3 class="baby-name">Rudhir Vaayu Shaurya</h3>
-            <p class="baby-mom"><i class="fa-solid fa-heart"></i> Sahana's little warrior</p>
+            <h3 class="baby-name" id="sidebarBabyName">My Baby</h3>
+            <p class="baby-mom"><i class="fa-solid fa-heart"></i> <span id="sidebarParentName">Parent</span>'s little one</p>
         </div>
 
         <ul class="nav-links">
@@ -52,11 +52,11 @@
 
         <div class="user-profile">
             <div class="avatar">
-                <img src="https://i.pravatar.cc/150?u=sahana_mom" alt="Sahana">
+                <img id="parentAvatar" src="https://api.dicebear.com/7.x/personas/svg?seed=parent&backgroundColor=7c5cfa" alt="Parent">
             </div>
             <div class="info">
-                <p class="name">Sahana</p>
-                <p class="role">Super Mom 💜</p>
+                <p class="name" id="sidebarParentNameBottom">Parent</p>
+                <p class="role">Super Parent 💜</p>
             </div>
         </div>
     </nav>
@@ -68,8 +68,8 @@
         <header class="dashboard-header">
             <button class="hamburger" id="hamburgerBtn" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
             <div class="header-text">
-                <h1>Hey <span class="highlight">Sahana!</span> 🌙</h1>
-                <p>Tracking Rudhir Vaayu Shaurya's beautiful journey.</p>
+                <h1>Hey <span class="highlight" id="headerParentName">Parent!</span> 🌙</h1>
+                <p>Tracking <span id="headerBabyName">your baby</span>'s beautiful journey.</p>
             </div>
             <div class="header-actions">
                 <div class="age-selector-wrap">
@@ -135,6 +135,14 @@
         <!-- DOB + Export/Import toolbar -->
         <div class="data-toolbar glass-card" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;padding:.875rem 1.25rem;margin-bottom:1rem;">
             <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#7b7b9e;white-space:nowrap;">
+                <i class="fa-solid fa-baby" style="color:#7c5cfa;"></i> Baby's name:
+                <input type="text" id="babyNameInput" placeholder="e.g. Aria" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#f0f0ff;padding:.35rem .65rem;font-family:'Outfit',sans-serif;font-size:.85rem;width:130px;">
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#7b7b9e;white-space:nowrap;">
+                <i class="fa-solid fa-heart" style="color:#ff7597;"></i> Parent's name:
+                <input type="text" id="parentNameInput" placeholder="e.g. Priya" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#f0f0ff;padding:.35rem .65rem;font-family:'Outfit',sans-serif;font-size:.85rem;width:130px;">
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#7b7b9e;white-space:nowrap;">
                 <i class="fa-solid fa-cake-candles" style="color:#ff7597;"></i> Date of Birth:
                 <input type="date" id="dobInput" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#f0f0ff;padding:.35rem .65rem;font-family:'Outfit',sans-serif;font-size:.85rem;">
             </label>
@@ -197,7 +205,7 @@
                 <div class="section-header">
                     <div>
                         <h2><i class="fa-solid fa-lightbulb glow-yellow"></i> Suggestions for Month <span id="suggestionMonth">8</span></h2>
-                        <p class="section-sub">WHO / AAP Guidelines — tick off what Rudhir has done!</p>
+                        <p class="section-sub">WHO / AAP Guidelines — tick off what <span id="suggestionsBabyName">your baby</span> has done!</p>
                     </div>
                     <span class="suggest-badge">WHO / AAP</span>
                 </div>
@@ -258,7 +266,7 @@
                 <div class="memory-grid" id="memoryGrid">
                     <div class="memory-item empty-state">
                         <i class="fa-solid fa-camera"></i>
-                        <p>No memories yet — capture Rudhir's first moments!</p>
+                        <p>No memories yet — capture <span id="memoriesBabyName">your baby</span>'s first moments!</p>
                     </div>
                 </div>
             </section>
@@ -268,7 +276,7 @@
                     <div class="section-header vacc-header">
                         <div>
                             <h2><i class="fa-solid fa-shield-virus glow-teal"></i> Vaccination Tracker</h2>
-                            <p class="section-sub">IAP (Indian Academy of Pediatrics) Schedule &middot; Tick off doses given to Rudhir</p>
+                            <p class="section-sub">IAP (Indian Academy of Pediatrics) Schedule &middot; Tick off doses given to <span id="vaccineBabyName">your baby</span></p>
                         </div>
                         <div class="vacc-summary">
                             <div class="vacc-summary-ring">

@@ -71,6 +71,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Feature 10: height unit (always store ft in DB, toggle display)
     let heightUnit = 'ft';
 
+    // ── PROFILE NAMES ──────────────────────────────────────────
+    let babyName   = 'Baby';
+    let parentName = 'Parent';
+
+    function applyNames() {
+        const b = babyName   || 'Baby';
+        const p = parentName || 'Parent';
+
+        // Page title
+        document.title = `Sprout · ${b}`;
+
+        // Sidebar
+        const sbn = document.getElementById('sidebarBabyName');
+        if (sbn) sbn.textContent = b;
+        const spn = document.getElementById('sidebarParentName');
+        if (spn) spn.textContent = p;
+        const spnb = document.getElementById('sidebarParentNameBottom');
+        if (spnb) spnb.textContent = p;
+
+        // Avatar seeds (generates unique avatar per name)
+        const babyAv = document.getElementById('babyAvatar');
+        if (babyAv) babyAv.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(b)}&backgroundColor=7c5cfa,ff7597&radius=50`;
+        const parAv = document.getElementById('parentAvatar');
+        if (parAv) parAv.src = `https://api.dicebear.com/7.x/personas/svg?seed=${encodeURIComponent(p)}&backgroundColor=7c5cfa`;
+
+        // Header
+        const hpn = document.getElementById('headerParentName');
+        if (hpn) hpn.textContent = p + '!';
+        const hbn = document.getElementById('headerBabyName');
+        if (hbn) hbn.textContent = b;
+
+        // Sections
+        const sug = document.getElementById('suggestionsBabyName');
+        if (sug) sug.textContent = b;
+        const mem = document.getElementById('memoriesBabyName');
+        if (mem) mem.textContent = b;
+        const vac = document.getElementById('vaccineBabyName');
+        if (vac) vac.textContent = b;
+
+        // Inputs
+        const bi = document.getElementById('babyNameInput');
+        if (bi && bi.value !== b && b !== 'Baby') bi.value = b;
+        const pi = document.getElementById('parentNameInput');
+        if (pi && pi.value !== p && p !== 'Parent') pi.value = p;
+
+        // Refresh chart label
+        if (typeof refreshChart === 'function') refreshChart();
+    }
+
     // ── INITIAL DATA LOAD ────────────────────────────────────
     try {
         const [growthDb, stateDb, timelineDb, memoriesDb] = await Promise.all([
@@ -93,12 +142,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dob = s.val;
             } else if (s.key === 'heightUnit') {
                 heightUnit = s.val;
+            } else if (s.key === 'babyName') {
+                babyName = s.val;
+            } else if (s.key === 'parentName') {
+                parentName = s.val;
             } else if (s.key.startsWith('v_')) {
                 vaccState[s.key] = val;
             } else {
                 checkState[s.key] = val;
             }
         });
+
+        applyNames();
 
         // Restore DOB input
         if (dob) {
@@ -201,7 +256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     { label: 'WHO P25', data: benchP25, borderColor: 'rgba(0,230,118,0.35)', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, fill: false, tension: 0.4, order: 4 },
                     { label: 'WHO P75 band', data: benchP75, borderColor: 'rgba(0,230,118,0.35)', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, backgroundColor: 'rgba(0,230,118,0.08)', fill: { target: 0, above: 'rgba(0,230,118,0.08)', below: 'rgba(0,0,0,0)' }, tension: 0.4, order: 4 },
                     { label: 'WHO Median', data: benchP50, borderColor: 'rgba(0,230,118,0.75)', borderWidth: 2, borderDash: [7, 3], pointRadius: 0, fill: false, tension: 0.4, order: 3 },
-                    { label: `Rudhir (${unit})`, data: [...data], borderColor: color, backgroundColor: babyGrad, borderWidth: 3, pointBackgroundColor: '#0a0a0f', pointBorderColor: color, pointBorderWidth: 2.5, pointRadius: 5, pointHoverRadius: 8, fill: true, tension: 0.4, order: 1 }
+                    { label: `${babyName} (${unit})`, data: [...data], borderColor: color, backgroundColor: babyGrad, borderWidth: 3, pointBackgroundColor: '#0a0a0f', pointBorderColor: color, pointBorderWidth: 2.5, pointRadius: 5, pointHoverRadius: 8, fill: true, tension: 0.4, order: 1 }
                 ]
             },
             options: {
@@ -261,12 +316,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hcDev   = ((rudhirHC - whoHC_p50) / whoHC_p50 * 100).toFixed(1);
             const hcClass = hcDev > 0 ? 'dev-above' : hcDev < 0 ? 'dev-below' : 'dev-normal';
             const hcArrow = hcDev > 0 ? '▲' : hcDev < 0 ? '▼' : '●';
-            hcDevHtml = `<div class="dev-tag"><div class="dev-dot" style="background:#33b5e5"></div><span>Rudhir Head Circ.:</span><strong class="${hcClass}">${hcArrow} ${Math.abs(hcDev)}% ${hcDev > 0 ? 'above' : hcDev < 0 ? 'below' : 'at'} WHO median</strong></div>`;
+            hcDevHtml = `<div class="dev-tag"><div class="dev-dot" style="background:#33b5e5"></div><span>${babyName} Head Circ.:</span><strong class="${hcClass}">${hcArrow} ${Math.abs(hcDev)}% ${hcDev > 0 ? 'above' : hcDev < 0 ? 'below' : 'at'} WHO median</strong></div>`;
         }
 
         document.getElementById('deviationInfo').innerHTML = `
-            <div class="dev-tag"><div class="dev-dot" style="background:#7c5cfa"></div><span>Rudhir Weight:</span><strong class="${wClass}">${wArrow} ${Math.abs(wDev)}% ${wDev > 0 ? 'above' : wDev < 0 ? 'below' : 'at'} WHO median</strong></div>
-            <div class="dev-tag"><div class="dev-dot" style="background:#ff7597"></div><span>Rudhir Height:</span><strong class="${hClass}">${hArrow} ${Math.abs(hDev)}% ${hDev > 0 ? 'above' : hDev < 0 ? 'below' : 'at'} WHO median</strong></div>
+            <div class="dev-tag"><div class="dev-dot" style="background:#7c5cfa"></div><span>${babyName} Weight:</span><strong class="${wClass}">${wArrow} ${Math.abs(wDev)}% ${wDev > 0 ? 'above' : wDev < 0 ? 'below' : 'at'} WHO median</strong></div>
+            <div class="dev-tag"><div class="dev-dot" style="background:#ff7597"></div><span>${babyName} Height:</span><strong class="${hClass}">${hArrow} ${Math.abs(hDev)}% ${hDev > 0 ? 'above' : hDev < 0 ? 'below' : 'at'} WHO median</strong></div>
             ${hcDevHtml}
             <div class="dev-tag"><div class="dev-dot" style="background:rgba(0,230,118,0.7)"></div><span style="color:#7b7b9e">Green band = WHO 25th–75th percentile range</span></div>`;
     }
@@ -380,6 +435,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         const now       = new Date();
         const msPerWeek = 7 * 24 * 60 * 60 * 1000;
         return Math.floor((now - birth) / msPerWeek);
+    }
+
+    // ── NAME INPUTS ───────────────────────────────────────────
+    const babyNameInput = document.getElementById('babyNameInput');
+    if (babyNameInput) {
+        babyNameInput.addEventListener('change', async e => {
+            babyName = e.target.value.trim() || 'Baby';
+            await api.put('/state/babyName', { val: babyName }).catch(() => {});
+            applyNames();
+        });
+    }
+
+    const parentNameInput = document.getElementById('parentNameInput');
+    if (parentNameInput) {
+        parentNameInput.addEventListener('change', async e => {
+            parentName = e.target.value.trim() || 'Parent';
+            await api.put('/state/parentName', { val: parentName }).catch(() => {});
+            applyNames();
+        });
     }
 
     const dobInput = document.getElementById('dobInput');
@@ -985,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (item.id) await api.del('/memories/' + item.id).catch(() => {});
                 div.remove();
                 if (grid.children.length === 0) {
-                    grid.innerHTML = `<div class="memory-item empty-state"><i class="fa-solid fa-camera"></i><p>No memories yet — capture Rudhir's first moments!</p></div>`;
+                    grid.innerHTML = `<div class="memory-item empty-state"><i class="fa-solid fa-camera"></i><p>No memories yet — capture ${babyName}'s first moments!</p></div>`;
                 }
                 showToast('Memory deleted!');
             }
