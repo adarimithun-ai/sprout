@@ -53,6 +53,44 @@ jobs:
           cp "$APK" sprout-v4.apk
           echo "APK ready: $APK"
 
+      - name: Extract certificate SHA-256 fingerprint
+        id: fingerprint
+        run: |
+          BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools/ | sort -V | tail -1)
+          SHA256=$($ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner verify \
+            --print-certs sprout-v4.apk \
+            | grep "Signer #1 certificate SHA-256 digest" | awk '{print $NF}' \
+            | sed 's/../&:/g;s/:$//')
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "Certificate SHA-256 fingerprint: $SHA256"
+
+      - name: Write assetlinks.json for Vercel TWA verification
+        run: |
+          mkdir -p .well-known
+          cat > .well-known/assetlinks.json << EOF
+          [{
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+              "namespace": "android_app",
+              "package_name": "io.github.adarimithun_ai.sprout",
+              "sha256_cert_fingerprints": ["${{ steps.fingerprint.outputs.sha256 }}"]
+            }
+          }]
+          EOF
+          echo "assetlinks.json written:"
+          cat .well-known/assetlinks.json
+
+      - name: Deploy assetlinks.json to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            npm install -g vercel@latest --silent
+            vercel deploy --prod --token "$VERCEL_TOKEN" --yes 2>&1 | tail -5
+          else
+            echo "VERCEL_TOKEN not set — skipping Vercel deploy. Commit assetlinks.json manually."
+          fi
+
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
