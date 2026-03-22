@@ -1115,9 +1115,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
     if (overlay)      overlay.addEventListener('click', closeSidebar);
 
+    // ── SECTION NAVIGATION ───────────────────────────────────
+    function showSection(section) {
+        // Update active nav item
+        document.querySelectorAll('.nav-links li').forEach(li => {
+            li.classList.toggle('active', li.dataset.section === section);
+        });
+
+        // Show/hide panels based on data-panel attribute
+        document.querySelectorAll('[data-panel]').forEach(el => {
+            const panels = el.dataset.panel.split(' ');
+            el.style.display = panels.includes(section) ? '' : 'none';
+        });
+
+        // Also show/hide the data-toolbar (only on dashboard)
+        const toolbar = document.querySelector('.data-toolbar');
+        if (toolbar) toolbar.style.display = section === 'dashboard' ? '' : 'none';
+    }
+
     document.querySelectorAll('.nav-links li').forEach(li => {
         li.addEventListener('click', () => {
+            const section = li.dataset.section || 'dashboard';
+            showSection(section);
             if (window.innerWidth <= 768) closeSidebar();
         });
     });
+
+    // Start on dashboard
+    showSection('dashboard');
 });
